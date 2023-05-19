@@ -9,6 +9,27 @@ from psycopg2 import sql
 
 
 def createTables():
+    #   CREATE TABLE PhotoTable    (photo_ID       INTEGER     CHECK(photo_ID > 0)     PRIMARY KEY,
+    #                               description    TEXT                                NOT NULL,
+    #                               size           INTEGER     CHECK(size >= 0)        NOT NULL);
+
+    #   CREATE TABLE RAMTable      (ram_ID         INTEGER     CHECK(ram_ID > 0)       PRIMARY KEY,
+    #                               company        TEXT                                NOT NULL,
+    #                               size           INTEGER     CHECK(size > 0)         NOT NULL);
+
+    #   CREATE TABLE DiskTable     (disk_ID        INTEGER     CHECK(disk_ID > 0)      PRIMARY KEY,
+    #                               company        TEXT                                NOT NULL,
+    #                               speed          INTEGER     CHECK(speed > 0)        NOT NULL,
+    #                               free_space     INTEGER     CHECK(free_space >= 0)  NOT NULL,
+    #                               cost           INTEGER     CHECK(cost > 0)         NOT NULL);
+
+    #   CREATE TABLE PhotoInDisk   (disk_ID        INTEGER     REFERENCES DiskTable,
+    #                               photo_ID       INTEGER     REFERENCES PhotoTable,  UNIQUE(disk_ID, photo_ID));
+
+    #   CREATE TABLE RAMInDisk     (disk_ID        INTEGER     REFERENCES DiskTable,
+    #                               ram_ID         INTEGER     REFERENCES RAMTable,    UNIQUE(disk_ID, ram_ID));
+
+    #
     pass
 
 
@@ -21,10 +42,17 @@ def dropTables():
 
 
 def addPhoto(photo: Photo) -> ReturnValue:
+
+    #   INSERT INTO PhotoTable
+    #        VALUES (id, description, size);
+
     return ReturnValue.OK
 
 
 def getPhotoByID(photoID: int) -> Photo:
+
+    #
+
     return Photo()
 
 
