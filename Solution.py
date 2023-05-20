@@ -82,14 +82,6 @@ def createTables():
         conn.commit()
     except DatabaseException.ConnectionInvalid as e:
         print(e)
-    except DatabaseException.NOT_NULL_VIOLATION as e:
-        print(e)
-    except DatabaseException.CHECK_VIOLATION as e:
-        print(e)
-    except DatabaseException.UNIQUE_VIOLATION as e:
-        print(e)
-    except DatabaseException.FOREIGN_KEY_VIOLATION as e:
-        print(e)
     except Exception as e:
         print(e)
     finally:
@@ -97,10 +89,26 @@ def createTables():
 
 
 def clearTables():
-    pass
+    conn = None
+    try:
+        conn = Connector.DBConnector()
+        conn.execute("DELETE FROM RamInDisk;    \
+                      DELETE FROM PhotoInDisk;  \
+                      DELETE FROM DiskTable;    \
+                      DELETE FROM RamTable;     \
+                      DELETE FROM PhotoTable;")
+        conn.commit()
+    except DatabaseException.ConnectionInvalid as e:
+        print(e)
+    except Exception as e:
+        print(e)
+    finally:
+        conn.close()
 
 
 def dropTables():
+    
+    
     pass
 
 
