@@ -36,6 +36,7 @@ def createTables():
                     ram_ID         INTEGER     REFERENCES RAMTable,                     \
                     UNIQUE(disk_ID, ram_ID)); "
 
+    """
     # VIEWs:
     # for getPhotosCanBeAddedToDisk:
     DiskBySpaceVIEW = "CREATE VIEW DiskBySpaceVIEW AS                                   \
@@ -73,12 +74,13 @@ def createTables():
                                        PhotoBySizeVIEW                                  \
                                  WHERE DiskBySpaceAndRamVIEW.free_space >= PhotoBySizeVIEW.size     \
                                    AND DiskBySpaceAndRamVIEW.sum_ram >= PhotoBySizeVIEW.size; "
+    """
     conn = None
     try:
         conn = Connector.DBConnector()
-        conn.execute(PhotoTable + RamTable + DiskTable + PhotoInDisk + RamInDisk +
-                     DiskBySpaceVIEW + PhotoBySizeVIEW + PhotosCanBeAddedVIEW +
-                     DiskBySumRamVIEW + DiskBySpaceAndRamVIEW + CanBeAddedToDiskAndRamVIEW)
+        conn.execute(PhotoTable + RamTable + DiskTable + PhotoInDisk + RamInDisk)
+                  #   DiskBySpaceVIEW + PhotoBySizeVIEW + PhotosCanBeAddedVIEW +
+                  #   DiskBySumRamVIEW + DiskBySpaceAndRamVIEW + CanBeAddedToDiskAndRamVIEW)
         conn.commit()
     except Exception as e:
         print(e)
@@ -106,11 +108,11 @@ def dropTables():
     conn = None
     try:
         conn = Connector.DBConnector()
-        conn.execute("DROP TABLE IF EXIST RamInDisk CASCADE;    \
-                      DROP TABLE IF EXIST PhotoInDisk CASCADE;  \
-                      DROP TABLE IF EXIST DiskTable CASCADE;    \
-                      DROP TABLE IF EXIST RamTable CASCADE;     \
-                      DROP TABLE IF EXIST PhotoTable CASCADE;")
+        conn.execute("DROP TABLE IF EXISTS RamInDisk CASCADE;    \
+                      DROP TABLE IF EXISTS PhotoInDisk CASCADE;  \
+                      DROP TABLE IF EXISTS DiskTable CASCADE;    \
+                      DROP TABLE IF EXISTS RamTable CASCADE;     \
+                      DROP TABLE IF EXISTS PhotoTable CASCADE;")
         conn.commit()
     except Exception as e:
         print(e)
@@ -118,23 +120,17 @@ def dropTables():
         conn.close()
 
 
-def addPhoto(photo: Photo) -> ReturnValue:
-    #   INSERT INTO PhotoTable
-    #        VALUES (id, description, size);
+def addItemAUX(query: sql.Composed) -> ReturnValue:
+    # Generic function to add an item to a table, 
+    #   just for avoiding code duplication.
     conn = None
     try:
         conn = Connector.DBConnector()
-        query = sql.SQL("INSERT INTO PhotoTable    \
-                              VALUES ({id}, {description}, {size});").format(
-                                    id=sql.Literal(Photo.getPhotoID()),
-                                    description=sql.Literal(Photo.getDescription()),
-                                    size=sql.Literal(Photo.getSize()))
         conn.execute(query)
         conn.commit()
-    except(DatabaseException.NOT_NULL_VIOLATION, 
-            DatabaseException.CHECK_VIOLATION) as e:
+    except (DatabaseException.NOT_NULL_VIOLATION, DatabaseException.CHECK_VIOLATION):
         return ReturnValue.BAD_PARAMS
-    except DatabaseException.UNIQUE_VIOLATION as e:
+    except DatabaseException.UNIQUE_VIOLATION:
         return ReturnValue.ALREADY_EXISTS
     except Exception as e:
         print(e)
@@ -144,11 +140,23 @@ def addPhoto(photo: Photo) -> ReturnValue:
     return ReturnValue.OK
 
 
+def addPhoto(photo: Photo) -> ReturnValue:
+    #   INSERT INTO PhotoTable
+    #        VALUES (id, description, size);
+    query = sql.SQL("INSERT INTO PhotoTable    \
+                          VALUES ({id}, {description}, {size});").format(
+                            id = sql.Literal(photo.getPhotoID()),
+                            description = sql.Literal(photo.getDescription()),
+                            size = sql.Literal(photo.getSize()))
+    return addItemAUX(query)
+
+
 def getPhotoByID(photoID: int) -> Photo:
+
     #    SELECT *
     #      FROM PhotoTable
     #     WHERE photo_ID == this->photoID
-    
+
     return Photo()
 
 
@@ -164,7 +172,16 @@ def deletePhoto(photo: Photo) -> ReturnValue:
 
 
 def addDisk(disk: Disk) -> ReturnValue:
-    return ReturnValue.OK
+    #   INSERT INTO DiskTable
+    #        VALUES (id, company, speed, free_space, cost);
+    query = sql.SQL("INSERT INTO DiskTable  \
+                          VALUES ({id}, {company}, {speed}, {free_space}, {cost})").format(
+                            id = sql.Literal(disk.getDiskID()),
+                            company = sql.Literal(disk.getCompany()),
+                            speed = sql.Literal(disk.getSpeed()),
+                            free_space = sql.Literal(disk.getFreeSpace()),
+                            cost = sql.Literal(disk.getCost()))
+    return addItemAUX(query)
 
 
 def getDiskByID(diskID: int) -> Disk:
@@ -176,7 +193,14 @@ def deleteDisk(diskID: int) -> ReturnValue:
 
 
 def addRAM(ram: RAM) -> ReturnValue:
-    return ReturnValue.OK
+    #   INSERT INTO RamTable
+    #        VALUES (id, company, size);
+    query = sql.SQL("INSERT INTO RamTable   \
+                          VALUES ({id}, {company}, {size})").format(
+                            id = sql.Literal(ram.getRamID()),
+                            company = sql.Literal(ram.getCompany()),
+                            size = sql.Literal(ram.getSize()))
+    return addItemAUX(query)
 
 
 def getRAMByID(ramID: int) -> RAM:
