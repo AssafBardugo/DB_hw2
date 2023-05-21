@@ -151,13 +151,35 @@ def addPhoto(photo: Photo) -> ReturnValue:
     return addItemAUX(query)
 
 
-def getPhotoByID(photoID: int) -> Photo:
+def convertToPhotoAUX(result: Connector.ResultSet) -> list[Photo]:
+    photos = []
+    for i in result.size():
+        photos.append(Photo(result[i]['photo_ID'], 
+                            result[i]['description'], 
+                            result[i]['size']))
+    return photos
 
+
+def getPhotoByID(photoID: int) -> Photo:
     #    SELECT *
     #      FROM PhotoTable
-    #     WHERE photo_ID == this->photoID
+    #     WHERE photo_ID = photoID;
 
-    return Photo()
+    conn = Connector.DBConnector()
+    # If we are here, conn is valid.
+    _, result = conn.execute(sql.SQL("SELECT *               \
+                                        FROM PhotoTable      \
+                                       WHERE photo_ID = {}").format(sql.Literal(photoID)))
+    conn.commit()
+    conn.close()
+
+    if result.isEmpty():
+        return Photo.badPhoto()
+    
+    # photoID should be unique
+    assert(result.size() == 1)
+
+    return convertToPhotoAUX(result)[0]
 
 
 def deletePhoto(photo: Photo) -> ReturnValue:
@@ -184,8 +206,36 @@ def addDisk(disk: Disk) -> ReturnValue:
     return addItemAUX(query)
 
 
+def convertToDiskAUX(result: Connector.ResultSet) -> list[Disk]:
+    disks = []
+    for i in result.size():
+        disks.append(Disk(result[i]['disk_ID'],
+                          result[i]['company'],
+                          result[i]['speed'],
+                          result[i]['free_space'],
+                          result[i]['cost']))
+    return disks
+
+
 def getDiskByID(diskID: int) -> Disk:
-    return Disk()
+    #    SELECT *
+    #      FROM DiskTable
+    #     WHERE disk_ID = diskID;
+
+    conn = Connector.DBConnector()
+    _, result = conn.execute(sql.SQL("SELECT *               \
+                                        FROM DiskTable       \
+                                       WHERE disk_ID = {}").format(sql.Literal(diskID)))
+    conn.commit()
+    conn.close()
+
+    if result.isEmpty():
+        return Disk.badDisk()
+    
+    # diskID should be unique
+    assert(result.size() == 1)
+
+    return convertToDiskAUX(result)[0]
 
 
 def deleteDisk(diskID: int) -> ReturnValue:
@@ -203,8 +253,34 @@ def addRAM(ram: RAM) -> ReturnValue:
     return addItemAUX(query)
 
 
+def convertToRamAUX(result: Connector.ResultSet) -> list[RAM]:
+    rams = []
+    for i in result.size():
+        rams.append(RAM(result[i]['ram_ID'],
+                        result[i]['company'],
+                        result[i]['size']))
+    return rams
+
+
 def getRAMByID(ramID: int) -> RAM:
-    return RAM()
+    #    SELECT *
+    #      FROM RamTable
+    #     WHERE ram_ID = ramID;
+
+    conn = Connector.DBConnector()
+    _, result = conn.execute(sql.SQL("SELECT *               \
+                                        FROM RamTable        \
+                                       WHERE ram_ID = {}").format(sql.Literal(ramID)))
+    conn.commit()
+    conn.close()
+
+    if result.isEmpty():
+        return RAM.badRAM()
+    
+    # ramID should be unique
+    assert(result.size() == 1)
+
+    return convertToRamAUX(result)[0]
 
 
 def deleteRAM(ramID: int) -> ReturnValue:
