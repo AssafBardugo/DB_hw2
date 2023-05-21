@@ -80,8 +80,6 @@ def createTables():
                      DiskBySpaceVIEW + PhotoBySizeVIEW + PhotosCanBeAddedVIEW +
                      DiskBySumRamVIEW + DiskBySpaceAndRamVIEW + CanBeAddedToDiskAndRamVIEW)
         conn.commit()
-    except DatabaseException.ConnectionInvalid as e:
-        print(e)
     except Exception as e:
         print(e)
     finally:
@@ -98,8 +96,6 @@ def clearTables():
                       DELETE FROM RamTable;     \
                       DELETE FROM PhotoTable;")
         conn.commit()
-    except DatabaseException.ConnectionInvalid as e:
-        print(e)
     except Exception as e:
         print(e)
     finally:
@@ -107,25 +103,52 @@ def clearTables():
 
 
 def dropTables():
-    
-    
-    pass
+    conn = None
+    try:
+        conn = Connector.DBConnector()
+        conn.execute("DROP TABLE IF EXIST RamInDisk CASCADE;    \
+                      DROP TABLE IF EXIST PhotoInDisk CASCADE;  \
+                      DROP TABLE IF EXIST DiskTable CASCADE;    \
+                      DROP TABLE IF EXIST RamTable CASCADE;     \
+                      DROP TABLE IF EXIST PhotoTable CASCADE;")
+        conn.commit()
+    except Exception as e:
+        print(e)
+    finally:
+        conn.close()
 
 
 def addPhoto(photo: Photo) -> ReturnValue:
-
     #   INSERT INTO PhotoTable
     #        VALUES (id, description, size);
-
+    conn = None
+    try:
+        conn = Connector.DBConnector()
+        query = sql.SQL("INSERT INTO PhotoTable    \
+                              VALUES ({id}, {description}, {size});").format(
+                                    id=sql.Literal(Photo.getPhotoID()),
+                                    description=sql.Literal(Photo.getDescription()),
+                                    size=sql.Literal(Photo.getSize()))
+        conn.execute(query)
+        conn.commit()
+    except(DatabaseException.NOT_NULL_VIOLATION, 
+            DatabaseException.CHECK_VIOLATION) as e:
+        return ReturnValue.BAD_PARAMS
+    except DatabaseException.UNIQUE_VIOLATION as e:
+        return ReturnValue.ALREADY_EXISTS
+    except Exception as e:
+        print(e)
+        return ReturnValue.ERROR
+    finally:
+        conn.close() 
     return ReturnValue.OK
 
 
 def getPhotoByID(photoID: int) -> Photo:
-
     #    SELECT *
     #      FROM PhotoTable
     #     WHERE photo_ID == this->photoID
-
+    
     return Photo()
 
 
