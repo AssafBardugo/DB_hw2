@@ -108,11 +108,11 @@ def dropTables():
     conn = None
     try:
         conn = Connector.DBConnector()
-        conn.execute("DROP TABLE IF EXISTS RamInDisk CASCADE;    \
-                      DROP TABLE IF EXISTS PhotoInDisk CASCADE;  \
-                      DROP TABLE IF EXISTS DiskTable CASCADE;    \
-                      DROP TABLE IF EXISTS RamTable CASCADE;     \
-                      DROP TABLE IF EXISTS PhotoTable CASCADE;")
+        conn.execute("DROP TABLE IF EXISTS RamInDisk    CASCADE;    \
+                      DROP TABLE IF EXISTS PhotoInDisk  CASCADE;    \
+                      DROP TABLE IF EXISTS DiskTable    CASCADE;    \
+                      DROP TABLE IF EXISTS RamTable     CASCADE;    \
+                      DROP TABLE IF EXISTS PhotoTable   CASCADE;")
         conn.commit()
     except Exception as e:
         print(e)
@@ -132,8 +132,7 @@ def addItemAUX(query: sql.Composed) -> ReturnValue:
         return ReturnValue.BAD_PARAMS
     except DatabaseException.UNIQUE_VIOLATION:
         return ReturnValue.ALREADY_EXISTS
-    except Exception as e:
-        print(e)
+    except Exception:
         return ReturnValue.ERROR
     finally:
         conn.close() 
@@ -141,13 +140,14 @@ def addItemAUX(query: sql.Composed) -> ReturnValue:
 
 
 def addPhoto(photo: Photo) -> ReturnValue:
-    #   INSERT INTO PhotoTable
-    #        VALUES (id, description, size);
-    query = sql.SQL("INSERT INTO PhotoTable    \
-                          VALUES ({id}, {description}, {size});").format(
-                            id = sql.Literal(photo.getPhotoID()),
-                            description = sql.Literal(photo.getDescription()),
-                            size = sql.Literal(photo.getSize()))
+    query = sql.SQL(
+        "INSERT INTO PhotoTable    \
+         VALUES ({id}, {description}, {size});"
+    ).format(
+        id = sql.Literal(photo.getPhotoID()),
+        description = sql.Literal(photo.getDescription()),
+        size = sql.Literal(photo.getSize())
+    )
     return addItemAUX(query)
 
 
@@ -161,15 +161,15 @@ def convertToPhotoAUX(result: Connector.ResultSet) -> list[Photo]:
 
 
 def getPhotoByID(photoID: int) -> Photo:
-    #    SELECT *
-    #      FROM PhotoTable
-    #     WHERE photo_ID = photoID;
-
     conn = Connector.DBConnector()
     # If we are here, conn is valid.
-    _, result = conn.execute(sql.SQL("SELECT *               \
-                                        FROM PhotoTable      \
-                                       WHERE photo_ID = {}").format(sql.Literal(photoID)))
+    _, result = conn.execute(
+        sql.SQL(
+            "SELECT *               \
+               FROM PhotoTable      \
+              WHERE photo_ID = {};"
+        ).format(sql.Literal(photoID))
+    )
     conn.commit()
     conn.close()
 
@@ -178,31 +178,48 @@ def getPhotoByID(photoID: int) -> Photo:
     
     # photoID should be unique
     assert(result.size() == 1)
-
     return convertToPhotoAUX(result)[0]
 
 
 def deletePhoto(photo: Photo) -> ReturnValue:
-
-    #   DELETE FROM PhotoTable
-    #   WHERE photo_ID == this->Photo.__photoID
-
-    #   DELETE FROM PhotoInDisk
-    #   WHERE photo_ID == this->Photo.__photoID
-
+    conn = None
+    try:
+        conn = Connector.DBConnector()
+        conn.execute(
+            sql.SQL(
+                "UPDATE DiskTable                                   \
+                    SET free_space = free_space + {size}            \
+                  WHERE disk_ID                                     \
+                     IN (SELECT disk_ID                             \
+                           FROM PhotoInDisk                         \
+                          WHERE photo_ID = {photo_id});             \
+                                                                    \
+                DELETE FROM PhotoInDisk, PhotoTable                 \
+                 WHERE photo_ID = {photo_id};"
+            ).format(
+                size = sql.Literal(photo.getSize()), 
+                photo_id = sql.Literal(photo.getPhotoID())
+            )
+        )
+        conn.commit()
+    except Exception:
+        return ReturnValue.ERROR
+    finally:
+        conn.close()
     return ReturnValue.OK
 
 
 def addDisk(disk: Disk) -> ReturnValue:
-    #   INSERT INTO DiskTable
-    #        VALUES (id, company, speed, free_space, cost);
-    query = sql.SQL("INSERT INTO DiskTable  \
-                          VALUES ({id}, {company}, {speed}, {free_space}, {cost})").format(
-                            id = sql.Literal(disk.getDiskID()),
-                            company = sql.Literal(disk.getCompany()),
-                            speed = sql.Literal(disk.getSpeed()),
-                            free_space = sql.Literal(disk.getFreeSpace()),
-                            cost = sql.Literal(disk.getCost()))
+    query = sql.SQL(
+        "INSERT INTO DiskTable  \
+         VALUES ({id}, {company}, {speed}, {free_space}, {cost});"
+    ).format(
+        id = sql.Literal(disk.getDiskID()),
+        company = sql.Literal(disk.getCompany()),
+        speed = sql.Literal(disk.getSpeed()),
+        free_space = sql.Literal(disk.getFreeSpace()),
+        cost = sql.Literal(disk.getCost())
+    )
     return addItemAUX(query)
 
 
@@ -218,14 +235,14 @@ def convertToDiskAUX(result: Connector.ResultSet) -> list[Disk]:
 
 
 def getDiskByID(diskID: int) -> Disk:
-    #    SELECT *
-    #      FROM DiskTable
-    #     WHERE disk_ID = diskID;
-
     conn = Connector.DBConnector()
-    _, result = conn.execute(sql.SQL("SELECT *               \
-                                        FROM DiskTable       \
-                                       WHERE disk_ID = {}").format(sql.Literal(diskID)))
+    _, result = conn.execute(
+        sql.SQL(
+            "SELECT *               \
+               FROM DiskTable       \
+              WHERE disk_ID = {};"
+        ).format(sql.Literal(diskID))
+    )
     conn.commit()
     conn.close()
 
@@ -234,22 +251,41 @@ def getDiskByID(diskID: int) -> Disk:
     
     # diskID should be unique
     assert(result.size() == 1)
-
     return convertToDiskAUX(result)[0]
 
 
 def deleteDisk(diskID: int) -> ReturnValue:
-    return ReturnValue.OK
+    conn = None
+    rows_effected = 0
+    try:
+        conn = Connector.DBConnector()
+        rows_effected, _ = conn.execute(
+            sql.SQL(
+                "DELETE FROM PhotoInDisk,   \
+                             RamInDisk,     \
+                             DiskTable      \
+                  WHERE disk_ID = {disk_id};"
+            ).format(
+                disk_id = sql.Literal(diskID)
+            )
+        )
+        conn.commit()
+    except Exception:
+        return ReturnValue.ERROR
+    finally:
+        conn.close()
+    return ReturnValue.OK if rows_effected > 0 else ReturnValue.NOT_EXISTS
 
 
 def addRAM(ram: RAM) -> ReturnValue:
-    #   INSERT INTO RamTable
-    #        VALUES (id, company, size);
-    query = sql.SQL("INSERT INTO RamTable   \
-                          VALUES ({id}, {company}, {size})").format(
-                            id = sql.Literal(ram.getRamID()),
-                            company = sql.Literal(ram.getCompany()),
-                            size = sql.Literal(ram.getSize()))
+    query = sql.SQL(
+        "INSERT INTO RamTable   \
+         VALUES ({id}, {company}, {size})"
+    ).format(
+        id = sql.Literal(ram.getRamID()),
+        company = sql.Literal(ram.getCompany()),
+        size = sql.Literal(ram.getSize())
+    )
     return addItemAUX(query)
 
 
@@ -263,14 +299,14 @@ def convertToRamAUX(result: Connector.ResultSet) -> list[RAM]:
 
 
 def getRAMByID(ramID: int) -> RAM:
-    #    SELECT *
-    #      FROM RamTable
-    #     WHERE ram_ID = ramID;
-
     conn = Connector.DBConnector()
-    _, result = conn.execute(sql.SQL("SELECT *               \
-                                        FROM RamTable        \
-                                       WHERE ram_ID = {}").format(sql.Literal(ramID)))
+    _, result = conn.execute(
+        sql.SQL(
+            "SELECT *               \
+               FROM RamTable        \
+              WHERE ram_ID = {};"
+        ).format(sql.Literal(ramID))
+    )
     conn.commit()
     conn.close()
 
@@ -279,73 +315,184 @@ def getRAMByID(ramID: int) -> RAM:
     
     # ramID should be unique
     assert(result.size() == 1)
-
     return convertToRamAUX(result)[0]
 
 
 def deleteRAM(ramID: int) -> ReturnValue:
-    return ReturnValue.OK
+    conn = None
+    rows_effected = 0
+    try:
+        conn = Connector.DBConnector()
+        rows_effected, _ = conn.execute(
+            sql.SQL(
+                "DELETE FROM RamInDisk,     \
+                             RamTable       \
+                  WHERE ram_ID = {ram_id};"
+            ).format(
+                ram_id = sql.Literal(ramID)
+            )
+        )
+        conn.commit()
+    except Exception:
+        return ReturnValue.ERROR
+    finally:
+        conn.close()
+    return ReturnValue.OK if rows_effected > 0 else ReturnValue.NOT_EXISTS
 
 
 def addDiskAndPhoto(disk: Disk, photo: Photo) -> ReturnValue:
-
-    #   add_photo =
-    #   "INSERT INTO PhotoTable
-    #         VALUES (id, description, size); "
-
-    #   add_disk =
-    #   "INSERT INTO DiskTable
-    #         VALUES (id, company, speed, free_space, cost);"
-
-    #   execute(add_photo + add_disk)
-
+    conn = None
+    try:
+        conn = Connector.DBConnector()
+        conn.execute(
+            sql.SQL(
+                "INSERT INTO PhotoTable                             \
+                      VALUES ({photo_id}, {description}, {size});   \
+                 INSERT INTO DiskTable                              \
+                      VALUES ({disk_id}, {company}, {speed}, {free_space}, {cost});"
+            ).format(
+                photo_id = sql.Literal(photo.getPhotoID()),
+                description = sql.Literal(photo.getDescription()),
+                size = sql.Literal(photo.getSize()), 
+                disk_id = sql.Literal(disk.getDiskID()),
+                company = sql.Literal(disk.getCompany()),
+                speed = sql.Literal(disk.getSpeed()),
+                free_space = sql.Literal(disk.getFreeSpace()),
+                cost = sql.Literal(disk.getCost())
+            )
+        )
+    except DatabaseException.UNIQUE_VIOLATION:
+        return ReturnValue.ALREADY_EXISTS
+    except Exception:
+        return ReturnValue.ERROR
+    else:
+        conn.commit()
+    finally:
+        conn.close()
     return ReturnValue.OK
 
 
+### Basic API ###
 def addPhotoToDisk(photo: Photo, diskID: int) -> ReturnValue:
-
-    #   save_photo =
-    #       INSERT INTO PhotoInDisk
-    #       VALUES (disk_ID, photo_ID);
-
-    # If there is not enough 'free_space' on the disk,
-    #   an exception should be thrown following the next update query. #
-
-    #   update_disk_space =     # auxUpdateDiskSpaceQuery(-Photo.__size) #
-    #       UPDATE DiskTable
-    #       SET free_space = free_space - Photo.__size
-    #       WHERE disk_ID = this->diskID
-
+    conn = None
+    try:
+        conn = Connector.DBConnector()
+        conn.execute(
+            sql.SQL(
+                "UPDATE DiskTable                               \
+                    SET free_space = free_space - {photo_size}  \
+                  WHERE disk_ID = {disk_id};                    \
+                                                                \
+                INSERT INTO PhotoInDisk                         \
+                VALUES ({disk_id}, {photo_id});"
+            ).format(
+                photo_size = sql.Literal(photo.getPhotoID()),
+                disk_id = sql.Literal(diskID),
+                photo_id = sql.Literal(photo.getPhotoID())
+            )
+        )
+    except DatabaseException.FOREIGN_KEY_VIOLATION: 
+        # Thrown by REFERENCES in PhotoInDisk
+        conn.rollback()
+        return ReturnValue.NOT_EXISTS
+    except DatabaseException.UNIQUE_VIOLATION:
+        # Thrown by UNIQUE in PhotoInDisk
+        conn.rollback()
+        return ReturnValue.ALREADY_EXISTS
+    except DatabaseException.CHECK_VIOLATION:
+        # Thrown by CHECK(free_space >= 0) in DiskTable
+        conn.rollback()
+        return ReturnValue.BAD_PARAMS
+    except Exception:
+        return ReturnValue.ERROR
+    else:
+        conn.commit()
+    finally:
+        conn.close()
     return ReturnValue.OK
 
-def auxUpdateDiskSpaceQuery(extra: int) -> str:
-    return "UPDATE DiskTable    \
-               SET free_space = free_space + " + str(extra)     \
-         + " WHERE disk_ID = this->diskID"
 
 def removePhotoFromDisk(photo: Photo, diskID: int) -> ReturnValue:
-
-    #   try_to_remove =
-    #       DELETE FROM PhotoInDisk
-    #       WHERE photo_ID = Photo.__photoID AND disk_ID = diskID;
-
-    # In case of success only:
-    #   update_disk_space = auxUpdateDiskSpaceQuery(Photo.__size)
-
+    conn = None
+    try:
+        conn = Connector.DBConnector()
+        conn.execute(
+            sql.SQL(
+                "UPDATE DiskTable                                   \
+                    SET free_space = free_space + {photo_size}      \
+                  WHERE disk_ID IN (SELECT disk_ID                  \
+                                      FROM PhotoInDisk              \
+                                     WHERE disk_ID = {disk_id}      \
+                                       AND photo_ID = {photo_id});  \
+                                                                    \
+                DELETE FROM PhotoInDisk                             \
+                 WHERE disk_ID = {disk_id}                          \
+                   AND photo_ID = {photo_id};"
+            ).format(
+                photo_size = sql.Literal(photo.getSize()),
+                disk_id = sql.Literal(diskID),
+                photo_id = sql.Literal(photo.getPhotoID())
+            )
+        )
+        conn.commit()
+    except Exception:
+        return ReturnValue.ERROR
+    finally:
+        conn.close()
     return ReturnValue.OK
 
 
 def addRAMToDisk(ramID: int, diskID: int) -> ReturnValue:
+    conn = None
+    try:
+        conn = Connector.DBConnector()
+        conn.execute(
+            sql.SQL(
+                "INSERT INTO RamInDisk  \
+                 VALUES ({disk_id}, {ram_id});"
+            ).format(
+                disk_id = sql.Literal(diskID),
+                ram_id = sql.Literal(ramID)
+            )
+        )
+    except DatabaseException.FOREIGN_KEY_VIOLATION: 
+        # Thrown by REFERENCES in RamInDisk
+        return ReturnValue.NOT_EXISTS
+    except DatabaseException.UNIQUE_VIOLATION:
+        # Thrown by UNIQUE in RamInDisk
+        return ReturnValue.ALREADY_EXISTS
+    except Exception:
+        return ReturnValue.ERROR
+    else:
+        conn.commit()
+    finally:
+        conn.close()
     return ReturnValue.OK
 
 
 def removeRAMFromDisk(ramID: int, diskID: int) -> ReturnValue:
-    return ReturnValue.OK
+    conn = None
+    rows_effected = 0
+    try:
+        conn = Connector.DBConnector()
+        rows_effected, _ = conn.execute(
+            sql.SQL(
+                "DELETE FROM RamInDisk  \
+                  WHERE disk_ID = {disk_id} AND ram_ID = {ram_id};"
+            ).format(
+                disk_id = sql.Literal(diskID),
+                ram_id = sql.Literal(ramID)
+            )
+        )
+        conn.commit()
+    except Exception:
+        return ReturnValue.ERROR
+    finally:
+        conn.close()
+    return ReturnValue.OK if rows_effected > 0 else ReturnValue.NOT_EXISTS
 
 
 def averagePhotosSizeOnDisk(diskID: int) -> float:
-
-    #
     return 0
 
 
