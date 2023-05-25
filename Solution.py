@@ -196,7 +196,10 @@ def deletePhoto(photo: Photo) -> ReturnValue:
                            FROM PhotoInDisk                         \
                           WHERE photo_ID = {photo_id});             \
                                                                     \
-                DELETE FROM PhotoInDisk, PhotoTable                 \
+                DELETE FROM PhotoInDisk                             \
+                 WHERE photo_ID = {photo_id};                       \
+                                                                    \
+                DELETE FROM PhotoTable                              \
                  WHERE photo_ID = {photo_id};"
             ).format(
                 size = sql.Literal(photo.getSize()), 
@@ -204,7 +207,8 @@ def deletePhoto(photo: Photo) -> ReturnValue:
             )
         )
         conn.commit()
-    except Exception:
+    except Exception as e:
+        print(e)
         return ReturnValue.ERROR
     finally:
         conn.close()
@@ -258,21 +262,25 @@ def getDiskByID(diskID: int) -> Disk:
 
 def deleteDisk(diskID: int) -> ReturnValue:
     conn = None
-    rows_effected = 0
     try:
         conn = Connector.DBConnector()
         rows_effected, _ = conn.execute(
             sql.SQL(
-                "DELETE FROM PhotoInDisk,   \
-                             RamInDisk,     \
-                             DiskTable      \
-                  WHERE disk_ID = {disk_id};"
+                "DELETE FROM PhotoInDisk        \
+                  WHERE disk_ID = {disk_id};    \
+                                                \
+                DELETE FROM RamInDisk           \
+                 WHERE disk_ID = {disk_id};      \
+                                                \
+                DELETE FROM DiskTable           \
+                 WHERE disk_ID = {disk_id};"
             ).format(
                 disk_id = sql.Literal(diskID)
             )
         )
         conn.commit()
-    except Exception:
+    except Exception as e:
+        print(e)
         return ReturnValue.ERROR
     finally:
         conn.close()
@@ -293,7 +301,7 @@ def addRAM(ram: RAM) -> ReturnValue:
 
 def convertToRamAUX(result: Connector.ResultSet) -> list[RAM]:
     rams = []
-    for i in result.size():
+    for i in range(result.size()):
         rams.append(RAM(result[i]['ram_ID'],
                         result[i]['company'],
                         result[i]['size']))
@@ -322,20 +330,22 @@ def getRAMByID(ramID: int) -> RAM:
 
 def deleteRAM(ramID: int) -> ReturnValue:
     conn = None
-    rows_effected = 0
     try:
         conn = Connector.DBConnector()
         rows_effected, _ = conn.execute(
             sql.SQL(
-                "DELETE FROM RamInDisk,     \
-                             RamTable       \
-                  WHERE ram_ID = {ram_id};"
+                "DELETE FROM RamInDisk                              \
+                 WHERE ram_ID = {ram_id};                           \
+                                                                    \
+                DELETE FROM RamTable                                \
+                 WHERE ram_ID = {ram_id};"
             ).format(
                 ram_id = sql.Literal(ramID)
             )
         )
         conn.commit()
-    except Exception:
+    except Exception as e:
+        print(e)
         return ReturnValue.ERROR
     finally:
         conn.close()
@@ -388,7 +398,7 @@ def addPhotoToDisk(photo: Photo, diskID: int) -> ReturnValue:
                 INSERT INTO PhotoInDisk                         \
                 VALUES ({disk_id}, {photo_id});"
             ).format(
-                photo_size = sql.Literal(photo.getPhotoID()),
+                photo_size = sql.Literal(photo.getSize()),
                 disk_id = sql.Literal(diskID),
                 photo_id = sql.Literal(photo.getPhotoID())
             )
@@ -474,7 +484,6 @@ def addRAMToDisk(ramID: int, diskID: int) -> ReturnValue:
 
 def removeRAMFromDisk(ramID: int, diskID: int) -> ReturnValue:
     conn = None
-    rows_effected = 0
     try:
         conn = Connector.DBConnector()
         rows_effected, _ = conn.execute(
