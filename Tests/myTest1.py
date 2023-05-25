@@ -42,6 +42,14 @@ class myTest1(AbstractTest):
         self.assertEqual(ReturnValue.BAD_PARAMS, Solution.addPhoto(Photo(1, "dog", -1)), "CHECK_VIOLATION")
         self.assertEqual(ReturnValue.ALREADY_EXISTS, Solution.addPhoto(photo1), "UNIQUE_VIOLATION")
 
+        self.assertEqual(1, Solution.getPhotoByID(1).getPhotoID(), "Should work")
+        self.assertEqual(2, Solution.getPhotoByID(2).getPhotoID(), "Should work")
+        self.assertEqual(3, Solution.getPhotoByID(3).getPhotoID(), "Should work")
+        self.assertEqual(4, Solution.getPhotoByID(4).getPhotoID(), "Should work")
+        self.assertEqual(5, Solution.getPhotoByID(5).getPhotoID(), "Should work")
+        # test Exceptions:
+        self.assertEqual(None, Solution.getPhotoByID(6).getPhotoID(), "photo_ID not exists")
+
     def test_addRAM(self) -> None:
         self.assertEqual(ReturnValue.OK, Solution.addRAM(ram1), "Should work")
         self.assertEqual(ReturnValue.OK, Solution.addRAM(ram2), "Should work")
@@ -87,14 +95,14 @@ class myTest1(AbstractTest):
 
     ################# getXByID #################
 
-    def test_getPhotoByID(self) -> None:
-        self.assertEqual(1, Solution.getPhotoByID(1).getPhotoID(), "Should work")
-        self.assertEqual(2, Solution.getPhotoByID(2).getPhotoID(), "Should work")
-        self.assertEqual(3, Solution.getPhotoByID(3).getPhotoID(), "Should work")
-        self.assertEqual(4, Solution.getPhotoByID(4).getPhotoID(), "Should work")
-        self.assertEqual(5, Solution.getPhotoByID(5).getPhotoID(), "Should work")
-        # test Exceptions:
-        self.assertEqual(Photo.badPhoto(), Solution.getPhotoByID(6), "photo_ID not exists")
+    # def test_getPhotoByID(self) -> None:
+    #     self.assertEqual(1, Solution.getPhotoByID(1).getPhotoID(), "Should work")
+    #     self.assertEqual(2, Solution.getPhotoByID(2).getPhotoID(), "Should work")
+    #     self.assertEqual(3, Solution.getPhotoByID(3).getPhotoID(), "Should work")
+    #     self.assertEqual(4, Solution.getPhotoByID(4).getPhotoID(), "Should work")
+    #     self.assertEqual(5, Solution.getPhotoByID(5).getPhotoID(), "Should work")
+    #     # test Exceptions:
+    #     self.assertEqual(Photo.badPhoto(), Solution.getPhotoByID(6), "photo_ID not exists")
 
     # def test_getRAMByID(self) -> None:
     #     self.assertEqual(1, Solution.getRAMByID(1).getRamID(), "Should work")

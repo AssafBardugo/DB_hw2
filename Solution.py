@@ -1,5 +1,6 @@
 from typing import List
 import Utility.DBConnector as Connector
+from Utility.DBConnector import ResultSet
 from Utility.ReturnValue import ReturnValue
 from Utility.Exceptions import DatabaseException
 from Business.Photo import Photo
@@ -153,7 +154,7 @@ def addPhoto(photo: Photo) -> ReturnValue:
 
 def convertToPhotoAUX(result: Connector.ResultSet) -> list[Photo]:
     photos = []
-    for i in result.size():
+    for i in range(result.size()):
         photos.append(Photo(result[i]['photo_ID'], 
                             result[i]['description'], 
                             result[i]['size']))
@@ -226,7 +227,7 @@ def addDisk(disk: Disk) -> ReturnValue:
 
 def convertToDiskAUX(result: Connector.ResultSet) -> list[Disk]:
     disks = []
-    for i in result.size():
+    for i in range(result.size()):
         disks.append(Disk(result[i]['disk_ID'],
                           result[i]['company'],
                           result[i]['speed'],
