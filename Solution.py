@@ -135,7 +135,7 @@ def addItemAUX(query: sql.Composed) -> ReturnValue:
     except Exception:
         return ReturnValue.ERROR
     finally:
-        conn.close() 
+        conn.close()
     return ReturnValue.OK
 
 
@@ -167,8 +167,8 @@ def getPhotoByID(photoID: int) -> Photo:
         sql.SQL(
             "SELECT *               \
                FROM PhotoTable      \
-              WHERE photo_ID = {};"
-        ).format(sql.Literal(photoID))
+              WHERE photo_ID = {photo_id};"
+        ).format(photo_id = sql.Literal(photoID))
     )
     conn.commit()
     conn.close()
@@ -178,7 +178,8 @@ def getPhotoByID(photoID: int) -> Photo:
     
     # photoID should be unique
     assert(result.size() == 1)
-    return convertToPhotoAUX(result)[0]
+    res = convertToPhotoAUX(result)
+    return res[0]
 
 
 def deletePhoto(photo: Photo) -> ReturnValue:
