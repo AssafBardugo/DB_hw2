@@ -91,13 +91,24 @@ def createTables():
                                  WHERE DBSAR.free_space >= PBS.size                     \
                                    AND DBSAR.sum_ram >= PBS.size; "
 
+
+    # for isDiskContainingAtLeastNumExists:
+    DescriptionsInDiskVIEW = "CREATE VIEW DescriptionsInDiskVIEW AS                     \
+                                SELECT disk_ID,                                         \
+                                       description,                                     \
+                                       COUNT(description) AS num                        \
+                                  FROM PhotoDataVIEW                                    \
+                                 GROUP BY disk_ID, description; "
+
+
     conn = None
     try:
         conn = Connector.DBConnector()
         conn.execute(PhotoTable + RamTable + DiskTable + PhotoInDisk + RamInDisk + 
                      PhotoDataVIEW + RamDataVIEW +
                      DiskBySpaceVIEW + PhotoBySizeVIEW + PhotosCanBeAddedVIEW +
-                     DiskBySumRamVIEW + DiskBySpaceAndRamVIEW + CanBeAddedToDiskAndRamVIEW)
+                     DiskBySumRamVIEW + DiskBySpaceAndRamVIEW + CanBeAddedToDiskAndRamVIEW +
+                     DescriptionsInDiskVIEW)
         conn.commit()
     except Exception as e:
         print(e)
@@ -379,14 +390,14 @@ def addDiskAndPhoto(disk: Disk, photo: Photo) -> ReturnValue:
                  INSERT INTO DiskTable                              \
                       VALUES ({disk_id}, {company}, {speed}, {free_space}, {cost});"
             ).format(
-                photo_id = sql.Literal(photo.getPhotoID()),
-                description = sql.Literal(photo.getDescription()),
-                size = sql.Literal(photo.getSize()), 
-                disk_id = sql.Literal(disk.getDiskID()),
-                company = sql.Literal(disk.getCompany()),
-                speed = sql.Literal(disk.getSpeed()),
-                free_space = sql.Literal(disk.getFreeSpace()),
-                cost = sql.Literal(disk.getCost())
+                photo_id =      sql.Literal(photo.getPhotoID()),
+                description =   sql.Literal(photo.getDescription()),
+                size =          sql.Literal(photo.getSize()), 
+                disk_id =       sql.Literal(disk.getDiskID()),
+                company =       sql.Literal(disk.getCompany()),
+                speed =         sql.Literal(disk.getSpeed()),
+                free_space =    sql.Literal(disk.getFreeSpace()),
+                cost =          sql.Literal(disk.getCost())
             )
         )
     except DatabaseException.UNIQUE_VIOLATION:
@@ -505,8 +516,9 @@ def removeRAMFromDisk(ramID: int, diskID: int) -> ReturnValue:
         conn = Connector.DBConnector()
         rows_effected, _ = conn.execute(
             sql.SQL(
-                "DELETE FROM RamInDisk  \
-                  WHERE disk_ID = {disk_id} AND ram_ID = {ram_id};"
+                "DELETE FROM RamInDisk          \
+                  WHERE disk_ID = {disk_id}     \
+                    AND ram_ID = {ram_id};"
             ).format(
                 disk_id = sql.Literal(diskID),
                 ram_id = sql.Literal(ramID)
@@ -544,6 +556,7 @@ def averagePhotosSizeOnDisk(diskID: int) -> float:
     
     if result.isEmpty() or result[0]['count'] == 0:
         return 0
+    
     return result[0]['sum'] / result[0]['count']
 
 
@@ -680,32 +693,113 @@ def isCompanyExclusive(diskID: int) -> bool:
 
 
 def isDiskContainingAtLeastNumExists(description: str, num: int) -> bool:
-    
-    return True
+    conn = None
+    _, result = 0, ResultSet()
+    try:
+        conn = Connector.DBConnector()
+        _, result = conn.execute(
+            sql.SQL(
+                "SELECT disk_ID                         \
+                   FROM DescriptionsInDiskVIEW          \
+                  WHERE description = {description}     \
+                    AND num >= {num};"
+            ).format(
+                description = sql.Literal(description),
+                num = sql.Literal(num)
+            )
+        )
+        conn.commit()
+    except Exception as e:
+        print(e)
+    finally:
+        conn.close()
+    return result.isEmpty() == False
 
 
 def getDisksContainingTheMostData() -> List[int]:
-    ########### JUST SOME IDEAS ###########
-    """
-        SELECT PhotoDataVIEW.disk_ID, PhotoDataVIEW.size, RamDataVIEW.size
-        FROM PhotoDataVIEW, RamDataVIEW
-        WHERE PhotoDataVIEW.disk_ID = RamDataVIEW.disk_ID
-        GROUP BY disk_ID
-        ORDER BY PhotoDataVIEW.size + RamDataVIEW.size
-    """
-    return []
+    conn = Connector.DBConnector()
+    _, result = conn.execute(
+        "SELECT disk_ID, SUM(size)                  \
+           FROM PhotoDataVIEW                       \
+          GROUP BY disk_ID                          \
+          ORDER BY SUM(size) DESC, disk_ID ASC      \
+          LIMIT 5"
+    )
+    conn.commit()
+    conn.close()
+
+    ret_val = []
+    for i in range(result.size()):
+        ret_val.append(result[i]['disk_ID'])
+
+    return ret_val
 
 
 ### Advanced API ###
 
 def getConflictingDisks() -> List[int]:
+    conn = Connector.DBConnector()
+    _, result = conn.execute(
+        "SELECT DISTINCT disk_ID                                \
+           FROM PhotoDataVIEW PD                                \
+          WHERE photo_ID IN (SELECT photo_ID                    \
+                               FROM PhotoDataVIEW               \
+                              WHERE disk_ID <> PD.disk_ID)      \
+          ORDER BY disk_ID ASC"
+    )
+    conn.commit()
+    conn.close()
 
-    return []
+    ret_val = []
+    for i in range(result.size()):
+        ret_val.append(result[i]['disk_ID'])
+
+    return ret_val
 
 
 def mostAvailableDisks() -> List[int]:
-    return []
+    conn = Connector.DBConnector()
+    _, result = conn.execute(
+        "SELECT PhotosCanBeAddedVIEW.disk_ID         AS disk_ID,        \
+                COUNT(PhotosCanBeAddedVIEW.photo_ID) AS num_photos,     \
+                DiskTable.speed                      AS speed           \
+           FROM PhotosCanBeAddedVIEW,                                   \
+                DiskTable                                               \
+          WHERE PhotosCanBeAddedVIEW.disk_ID = DiskTable.disk_ID        \
+          GROUP BY disk_ID                                              \
+          ORDER BY num_photos DESC,                                     \
+                   speed      DESC,                                     \
+                   disk_ID    ASC                                       \
+          LIMIT 5"
+    )
+    conn.commit()
+    conn.close()
+
+    ret_val = []
+    for i in range(result.size()):
+        ret_val.append(result[i]['disk_ID'])
+        
+    return ret_val
 
 
 def getClosePhotos(photoID: int) -> List[int]:
+    # Assuming that 50% of 1 is 0.
+    """
+    SELECT photo_ID
+    FROM   (SELECT photo_ID, disk_ID
+              FROM PhotoInDisk      # should be FROM PhotoTable
+             WHERE (disk_ID IN (SELECT disk_ID
+                                  FROM PhotoInDisk
+                                 WHERE photo_ID = {photo_id})
+                    OR NOT EXISTS(SELECT photo_ID
+                                    FROM PhotoInDisk
+                                   WHERE photo_ID = {photo_id})
+                    ) AND photo_ID <> {photo_id}
+            ) AS Table
+    HAVING COUNT(Table.disk_ID) >= 0.5*(SELECT COUNT(disk_ID)
+                                          FROM PhotoInDisk
+                                         WHERE photo_ID = {photo_id})
+    ORDER BY photo_ID ASC
+    LIMIT 10
+    """
     return []
