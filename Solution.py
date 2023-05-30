@@ -41,12 +41,16 @@ def createTables():
     # @@@@@@@@@@@@@@ VIEWs @@@@@@@@@@@@@@
 
     PhotoDataVIEW = "CREATE VIEW PhotoDataVIEW AS                                       \
-                        SELECT *                                                        \
+                        SELECT disk_ID,                                                 \
+                               PhotoInDisk.photo_ID AS photo_ID,                        \
+                               description, size                                        \
                           FROM PhotoInDisk LEFT OUTER JOIN PhotoTable                   \
                             ON PhotoInDisk.photo_ID = PhotoTable.photo_ID; "
 
     RamDataVIEW = "CREATE VIEW RamDataVIEW AS                                           \
-                        SELECT *                                                        \
+                        SELECT disk_ID,                                                 \
+                               RamInDisk.ram_ID AS ram_ID,                              \
+                               company, size                                            \
                           FROM RamInDisk LEFT OUTER JOIN RamTable                       \
                             ON RamInDisk.ram_ID = RamTable.ram_ID; "
 
@@ -108,21 +112,21 @@ def createTables():
                                   FROM (SELECT disk_ID FROM DiskTable)   AS D,          \
                                        (SELECT photo_ID FROM PhotoTable) AS P           \
                                  WHERE P.photo_ID NOT IN (SELECT photo_ID               \
-                                                            FROM PhotoInDiskVIEW        \
+                                                            FROM PhotoInDisk            \
                                                            WHERE disk_ID = D.disk_ID); "
     
 
     conn = None
     try:
         conn = Connector.DBConnector()
-        conn.execute(PhotoTable + RamTable + DiskTable + PhotoInDisk + RamInDisk + 
+        conn.execute(PhotoTable + RamTable + DiskTable + PhotoInDisk + RamInDisk +
                      PhotoDataVIEW + RamDataVIEW +
                      DiskBySpaceVIEW + PhotoBySizeVIEW + PhotosCanBeAddedVIEW +
                      DiskBySumRamVIEW + DiskBySpaceAndRamVIEW + CanBeAddedToDiskAndRamVIEW +
                      DescriptionsInDiskVIEW + PhotoNotInDiskVIEW)
         conn.commit()
     except Exception as e:
-        print(e)
+        print("createTables exception: " + str(e))
     finally:
         conn.close()
 
@@ -179,7 +183,8 @@ def addPhoto(photo: Photo) -> ReturnValue:
         return ReturnValue.BAD_PARAMS
     except DatabaseException.UNIQUE_VIOLATION:
         return ReturnValue.ALREADY_EXISTS
-    except Exception:
+    except Exception as e:
+        print(e)
         return ReturnValue.ERROR
     finally:
         conn.close()
