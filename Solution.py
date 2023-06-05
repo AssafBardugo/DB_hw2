@@ -116,8 +116,7 @@ def createTables():
         conn.commit()
     except Exception as e:
         print("createTables exception: " + str(e))
-    finally:
-        conn.close()
+    conn.close()
 
 
 def clearTables():
@@ -133,8 +132,7 @@ def clearTables():
     except Exception as e:
         # print(e)
         pass
-    finally:
-        conn.close()
+    conn.close()
 
 
 def dropTables():
@@ -150,8 +148,7 @@ def dropTables():
     except Exception as e:
         # print(e)
         pass
-    finally:
-        conn.close()
+    conn.close()
 
 
 def addPhoto(photo: Photo) -> ReturnValue:
@@ -805,20 +802,20 @@ def getClosePhotos(photoID: int) -> List[int]:
         conn = Connector.DBConnector()
         _, result = conn.execute(
             sql.SQL(
-                "SELECT photo_ID                                                                \
-                   FROM PhotoTable                                                              \
-                  WHERE photo_ID                                                                \
-                    NOT IN (SELECT photo_ID                                                     \
-                              FROM PhotoNotInDiskVIEW                                           \
-                             WHERE disk_ID IN (SELECT disk_ID                                   \
-                                                 FROM PhotoInDisk                               \
-                                                WHERE photo_ID = {photo_id})                    \
-                             GROUP BY photo_ID                                                  \
-                            HAVING COUNT(disk_ID) >= 1 + (SELECT COUNT(disk_ID)                 \
-                                                            FROM PhotoInDisk                    \
-                                                           WHERE photo_ID = {photo_id})/2 )     \
-                    AND photo_ID <> {photo_id}                                                  \
-                  ORDER BY photo_ID ASC                                                         \
+                "SELECT photo_ID                                                            \
+                   FROM PhotoTable                                                          \
+                  WHERE photo_ID                                                            \
+                    NOT IN (SELECT photo_ID                                                 \
+                              FROM PhotoNotInDiskVIEW                                       \
+                             WHERE disk_ID IN (SELECT disk_ID                               \
+                                                 FROM PhotoInDisk                           \
+                                                WHERE photo_ID = {photo_id})                \
+                             GROUP BY photo_ID                                              \
+                            HAVING COUNT(disk_ID) > (SELECT COUNT(disk_ID)                  \
+                                                       FROM PhotoInDisk                     \
+                                                      WHERE photo_ID = {photo_id})/2 )      \
+                    AND photo_ID <> {photo_id}                                              \
+                  ORDER BY photo_ID ASC                                                     \
                   LIMIT 10"
             ).format(
                 photo_id = sql.Literal(photoID)
