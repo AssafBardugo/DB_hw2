@@ -723,10 +723,8 @@ def isDiskContainingAtLeastNumExists(description: str, num: int) -> bool:
         )
         conn.commit()
     except Exception as e:
-        # print(e)
-        pass
-    finally:
-        conn.close()
+        print("isDiskContainingAtLeastNumExists exception: " + str(e))
+    conn.close()
     return result.isEmpty() == False
 
 
@@ -736,15 +734,19 @@ def getDisksContainingTheMostData() -> List[int]:
     try:
         conn = Connector.DBConnector()
         _, result = conn.execute(
-            "SELECT disk_ID, SUM(size)                  \
-               FROM PhotoDataVIEW                       \
-              GROUP BY disk_ID                          \
-              ORDER BY SUM(size) DESC, disk_ID ASC      \
+            "SELECT disk_ID, SUM(size)                          \
+               FROM ((SELECT disk_ID, COUNT(*) AS size          \
+                        FROM DiskTable GROUP BY disk_ID)        \
+                    UNION ALL                                   \
+                     (SELECT disk_ID, size FROM PhotoDataVIEW)  \
+                    ) AS DS                                     \
+              GROUP BY disk_ID                                  \
+              ORDER BY SUM(size) DESC, disk_ID ASC              \
               LIMIT 5"
         )
         conn.commit()
-    except Exception:
-        pass
+    except Exception as e:
+        print("getDisksContainingTheMostData exception: " + str(e))
     conn.close()
     return getIDsAUX(result, 'disk_ID')
 

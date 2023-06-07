@@ -1,22 +1,48 @@
 from typing import List
+from typing import Tuple
 import unittest
 import Utility.DBConnector as Connector
 from Utility.DBConnector import ResultSet
 from psycopg2 import sql
 
+my_query = "                                                                        \
+    SELECT L1.StudentName AS n1, L2.StudentName AS n2                               \
+      FROM Learns L1, Learns L2                                                     \
+     WHERE L1.CourseName = L2.CourseName                                            \
+       AND L1.Semester = L2.Semester                                                \
+       AND L1.Grade < L2.Grade                                                      \
+     GROUP BY n1, n2                                                                \
+    HAVING COUNT(DISTINCT L1.CourseName) = COUNT(DISTINCT L2.CourseName)            \
+       AND COUNT(DISTINCT L1.CourseName) = (SELECT COUNT(*)                         \
+                                              FROM Learns                           \
+                                             WHERE StudentName = L1.StudentName)    \
+       AND COUNT(DISTINCT L2.CourseName) = (SELECT COUNT(*)                         \
+                                              FROM Learns                           \
+                                             WHERE StudentName = L2.StudentName)"
 
-class studentPair:
-    def __init__(self, n1=None, n2=None):
-        self.n1 = n1
-        self.n2 = n2
-    
-    def __str__(self):
-        if self.n1 is None:
-            return "empty pair"
-        string = "n1 = " + self.n1
-        string += ",    "
-        string += "n2 = " + self.n2
-        return string
+# my_query = "WITH Result AS ( \
+#         SELECT l1.StudentName AS n1, l2.StudentName AS n2, l1.Grade AS grade1, l2.Grade AS grade2 \
+#         FROM Learns l1, Learns l2 \
+#         WHERE l1.StudentName != l2.StudentName \
+#         AND l1.CourseName = l2.CourseName \
+#         AND l1.Semester = l2.Semester \
+#         GROUP BY l1.StudentName, l2.StudentName, l1.Grade, l2.Grade \
+#         HAVING COUNT(DISTINCT CONCAT(l1.CourseName, '|', l1.Semester)) =  \
+#                 COUNT(DISTINCT CONCAT(l2.CourseName, '|',l2.Semester)) \
+#         ) \
+#     SELECT DISTINCT n1, n2 \
+#     FROM Result \
+#     WHERE grade2 > grade1;"
+
+ChatGPT_query = "SELECT l1.StudentName AS n1, l2.StudentName AS n2   \
+            FROM Learns l1, Learns l2       \
+            WHERE l1.StudentName < l2.StudentName   \
+                AND l1.CourseName = l2.CourseName   \
+                AND l1.Semester = l2.Semester   \
+            GROUP BY l1.StudentName, l2.StudentName \
+            HAVING COUNT(DISTINCT l1.CourseName) = COUNT(Distinct l2.CourseName)    \
+                AND MIN(l1.Grade)< MIN(l2.Grade)"
+
 
 
 def createLearnsTable():
@@ -64,35 +90,20 @@ def addGrade(s_name, c_name, grade, semester):
         conn.commit()
     except Exception as e:
         print("addGrade exception: " + str(e))
-        return -1
+        return False
     else:
-        return 0
+        return True
     finally:
         conn.close()
 
 
-def getQueryResult() -> List[studentPair]:
-    myQuery2 = "                                                                    \
-    SELECT L1.StudentName AS n1, L2.StudentName AS n2                               \
-      FROM Learns L1, Learns L2                                                     \
-     WHERE L1.CourseName = L2.CourseName                                            \
-       AND L1.Semester = L2.Semester                                                \
-       AND L1.Grade < L2.Grade                                                      \
-     GROUP BY n1, n2                                                                \
-    HAVING COUNT(DISTINCT L1.CourseName) =  COUNT(DISTINCT L2.CourseName)           \
-       AND COUNT(DISTINCT L1.CourseName) = (SELECT COUNT(*)                         \
-                                              FROM Learns                           \
-                                             WHERE StudentName = L1.StudentName)    \
-       AND COUNT(DISTINCT L2.CourseName) = (SELECT COUNT(*)                         \
-                                              FROM Learns                           \
-                                             WHERE StudentName = L2.StudentName)"
-
+def getQueryResult() -> List[Tuple]:
     conn = None
     _, result = 0, ResultSet()
     ret_val = []
     try:
         conn = Connector.DBConnector()
-        _, result = conn.execute(myQuery2)
+        _, result = conn.execute(my_query)
         conn.commit()
     except Exception as e:
         print("getQueryResult exception: " + str(e))
@@ -101,48 +112,10 @@ def getQueryResult() -> List[studentPair]:
         conn.close()
 
     for i in range(result.size()):
-        ret_val.append(studentPair(result[i]['n1'], result[i]['n2']))
+        pair = (result[i]['n1'], result[i]['n2'])
+        ret_val.append(pair)
     return ret_val
 
-
-# myQuery = "                                                                                 \
-# SELECT L1.StudentName AS n1,                                                                \
-#        L2.StudentName AS n2                                                                 \
-#   FROM Learns L1,                                                                           \
-#        Learns L2                                                                            \
-#  WHERE L1.StudentName NOT IN (SELECT StudentName                                            \
-#                                 FROM Learns L3                                              \
-#                                WHERE CourseName <> L2.CourseName                            \
-#                                   OR Semester NOT IN (SELECT Semester                       \
-#                                                         FROM Learns                         \
-#                                                        WHERE StudentName = L2.StudentName   \
-#                                                          AND CourseName = L3.CourseName)    \
-#                                   OR Grade >= (SELECT Grade                                 \
-#                                                  FROM Learns                                \
-#                                                 WHERE StudentName = L2.StudentName          \
-#                                                   AND CourseName = L3.CourseName            \
-#                                                   AND Semester = L3.Semester))              \
-#    AND L1.StudentName < L2.StudentName"
-
-myQuery = "                                                                                 \
-SELECT L1.StudentName AS n1,                                                                \
-       L2.StudentName AS n2                                                                 \
-  FROM Learns L1,                                                                           \
-       Learns L2                                                                            \
- WHERE L1.StudentName NOT IN (SELECT StudentName                                            \
-                                FROM Learns L3                                              \
-                               WHERE CourseName <> L2.CourseName                            \
-)AND L1.StudentName < L2.StudentName"
-                                  # OR Semester NOT IN (SELECT Semester                       \
-                                  #                       FROM Learns                         \
-                                  #                      WHERE StudentName = L2.StudentName   \
-                                  #                        AND CourseName = L3.CourseName))   \
-                                  # OR Grade >= (SELECT Grade                                 \
-                                  #                FROM Learns                                \
-                                  #               WHERE StudentName = L2.StudentName          \
-                                  #                 AND CourseName = L3.CourseName            \
-                                  #                 AND Semester = L3.Semester))              \
-   # AND L1.StudentName < L2.StudentName"
 
 
 class AbstractTest(unittest.TestCase):
