@@ -561,24 +561,24 @@ def averagePhotosSizeOnDisk(diskID: int) -> float:
         conn = Connector.DBConnector()
         _, result = conn.execute(
             sql.SQL(
-                "SELECT SUM(size)   AS sum,         \
-                        COUNT(size) AS count        \
-                   FROM PhotoDataVIEW               \
+                "SELECT AVG(size) AS avg        \
+                   FROM PhotoDataVIEW           \
                   WHERE disk_ID = {disk_id}"
             ).format(
                 disk_id = sql.Literal(diskID)
             )
         )
         conn.commit()
-    except Exception:
+    except Exception as e:
+        print("averagePhotosSizeOnDisk exception: " + str(e))
         return -1
     finally:
         conn.close()
     
-    if result.isEmpty() or result[0]['count'] == 0:
+    if result.isEmpty() or result[0]['avg'] is None:
         return 0
     
-    return result[0]['sum'] / result[0]['count']
+    return result[0]['avg']
 
 
 def getTotalRamOnDisk(diskID: int) -> int:
@@ -610,8 +610,7 @@ def getCostForDescription(description: str) -> int:
         conn = Connector.DBConnector()
         _, result = conn.execute(
             sql.SQL(
-                "SELECT PD.size AS size,                    \
-                        DT.cost AS cost                     \
+                "SELECT SUM(PD.size * DT.cost) AS sum       \
                    FROM PhotoDataVIEW PD,                   \
                         DiskTable DT                        \
                   WHERE PD.disk_ID = DT.disk_ID             \
@@ -622,16 +621,15 @@ def getCostForDescription(description: str) -> int:
         )
         conn.commit()
     except Exception as e:
-        # print(e)
+        print("getCostForDescription exception: " + str(e))
         return -1
     finally:
         conn.close()
 
-    ret_val = 0
-    for i in range(result.size()):
-        ret_val += result[i]['size'] * result[i]['cost']
+    if result.isEmpty() or result[0]['sum'] is None:
+        return 0
 
-    return ret_val
+    return result[0]['sum']
 
 
 def getPhotosCanBeAddedToDisk(diskID: int) -> List[int]:
@@ -651,12 +649,10 @@ def getPhotosCanBeAddedToDisk(diskID: int) -> List[int]:
             )
         )
         conn.commit()
-    except Exception as e:
-        # print(e)
+    except Exception:
         pass
     finally:
         conn.close()
-
     return getIDsAUX(result, 'photo_ID')
 
 
