@@ -20,29 +20,15 @@ my_query = "                                                                    
                                               FROM Learns                           \
                                              WHERE StudentName = L2.StudentName)"
 
-# my_query = "WITH Result AS ( \
-#         SELECT l1.StudentName AS n1, l2.StudentName AS n2, l1.Grade AS grade1, l2.Grade AS grade2 \
-#         FROM Learns l1, Learns l2 \
-#         WHERE l1.StudentName != l2.StudentName \
-#         AND l1.CourseName = l2.CourseName \
-#         AND l1.Semester = l2.Semester \
-#         GROUP BY l1.StudentName, l2.StudentName, l1.Grade, l2.Grade \
-#         HAVING COUNT(DISTINCT CONCAT(l1.CourseName, '|', l1.Semester)) =  \
-#                 COUNT(DISTINCT CONCAT(l2.CourseName, '|',l2.Semester)) \
-#         ) \
-#     SELECT DISTINCT n1, n2 \
-#     FROM Result \
-#     WHERE grade2 > grade1;"
 
-ChatGPT_query = "SELECT l1.StudentName AS n1, l2.StudentName AS n2   \
-            FROM Learns l1, Learns l2       \
-            WHERE l1.StudentName < l2.StudentName   \
-                AND l1.CourseName = l2.CourseName   \
-                AND l1.Semester = l2.Semester   \
-            GROUP BY l1.StudentName, l2.StudentName \
-            HAVING COUNT(DISTINCT l1.CourseName) = COUNT(Distinct l2.CourseName)    \
-                AND MIN(l1.Grade)< MIN(l2.Grade)"
-
+# ChatGPT_query = "SELECT l1.StudentName AS n1, l2.StudentName AS n2   \
+#             FROM Learns l1, Learns l2       \
+#             WHERE l1.StudentName < l2.StudentName   \
+#                 AND l1.CourseName = l2.CourseName   \
+#                 AND l1.Semester = l2.Semester   \
+#             GROUP BY l1.StudentName, l2.StudentName \
+#             HAVING COUNT(DISTINCT l1.CourseName) = COUNT(Distinct l2.CourseName)    \
+#                 AND MIN(l1.Grade)< MIN(l2.Grade)"
 
 
 def createLearnsTable():

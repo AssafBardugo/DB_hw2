@@ -419,8 +419,10 @@ def addDiskAndPhoto(disk: Disk, photo: Photo) -> ReturnValue:
             )
         )
     except DatabaseException.UNIQUE_VIOLATION:
+        conn.rollback()
         return ReturnValue.ALREADY_EXISTS
     except Exception:
+        conn.rollback()
         return ReturnValue.ERROR
     else:
         conn.commit()

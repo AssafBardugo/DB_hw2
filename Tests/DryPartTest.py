@@ -25,10 +25,10 @@ class DryPartTest(AbstractTest):
         self.assertTrue(DryPartQuery.addGrade('Yuval', 'PL', 82, 'Spring'))
         pairs = DryPartQuery.getQueryResult()
 
-        print("\nPairs received in test 1:")
-        print("   n1  |   n2  ")
-        for pair in pairs:
-            print(pair)
+        # print("\nPairs received in test 1:")
+        # print("   n1  |   n2  ")
+        # for pair in pairs:
+        #     print(pair)
 
         self.assertEqual(2, len(pairs), "The query should return 2 pairs")
 
@@ -55,10 +55,10 @@ class DryPartTest(AbstractTest):
         self.assertTrue(DryPartQuery.addGrade('Yuval', 'OS', 88, 'Summer'))
         pairs = DryPartQuery.getQueryResult()
 
-        print("\nPairs received in test 2:")
-        print("   n1  |   n2  ")
-        for pair in pairs:
-            print(pair)
+        # print("\nPairs received in test 2:")
+        # print("   n1  |   n2  ")
+        # for pair in pairs:
+        #     print(pair)
 
         self.assertEqual(7, len(pairs), "The query should return 7 pairs")
 
@@ -93,10 +93,10 @@ class DryPartTest(AbstractTest):
         self.assertTrue(DryPartQuery.addGrade('Amir', 'OS', 100, 'Winter'))
         pairs = DryPartQuery.getQueryResult()
 
-        print("\nPairs received in test 3:")
-        print("   n1  |   n2  ")
-        for pair in pairs:
-            print(pair)
+        # print("\nPairs received in test 3:")
+        # print("   n1  |   n2  ")
+        # for pair in pairs:
+        #     print(pair)
 
         self.assertEqual(6, len(pairs), "The query should return 6 pairs")
 
@@ -108,7 +108,6 @@ class DryPartTest(AbstractTest):
         self.assertTupleEqual(sorted_pairs[3], ('Yossi', 'Amir'))				
         self.assertTupleEqual(sorted_pairs[4], ('Yossi', 'Dana'))				
         self.assertTupleEqual(sorted_pairs[5], ('Yossi', 'Yuval'))				
-
 
 
 if __name__ == '__main__':
